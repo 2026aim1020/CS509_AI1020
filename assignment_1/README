@@ -1,0 +1,4 @@
+# CS509 - Assignment 1 (Single Task: GEMM + CSR Graph Conversion)
+
+- **GEMM**: simple (direct) implementation and cache-blocked (tiled) implementation
+- **CSR Graph**: adjacency-list -> Compressed Sparse Row conversion helper
