@@ -28,7 +28,7 @@ struct CSR{
     std::vector<double> values; 
 };
 
-/
+
 bool read_adjacency_list(const std::string &path, AdjacencyList &g);
 
 
