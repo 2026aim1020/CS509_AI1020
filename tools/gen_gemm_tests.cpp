@@ -4,7 +4,15 @@
 #include <vector>
 #include <random>
 #include <fstream>
+
+#ifdef _WIN32
+#include <direct.h>
+#define MKDIR(path) _mkdir(path)
+#else
 #include <sys/stat.h>
+#include <sys/types.h>
+#define MKDIR(path) mkdir(path, 0777)
+#endif
 
 struct Size
 {
@@ -41,7 +49,7 @@ static void write_case(const std::string &path, int M, int K, int N, std::mt1993
 int main(int argc, char **argv)
 {
     std::string out_dir = (argc > 1) ? argv[1] : ".";
-    mkdir(out_dir.c_str(), 0755); // no-op if it already exists
+    MKDIR(out_dir.c_str());
 
     std::mt19937 rng(71); // seeding for the random number generator
 
@@ -57,7 +65,7 @@ int main(int argc, char **argv)
     for (size_t i = 0; i < sizes.size(); ++i)
     {
         char name[64];
-        std::snprintf(name, sizeof(name), "gemm_test_%02zu.txt", i + 1); 
+        std::snprintf(name, sizeof(name), "gemm_test_%02zu.txt", i + 1);
         std::string path = out_dir + "/" + name;
         write_case(path, sizes[i].M, sizes[i].K, sizes[i].N, rng);
         std::printf("wrote %s (%dx%d * %dx%d)\n", path.c_str(),
