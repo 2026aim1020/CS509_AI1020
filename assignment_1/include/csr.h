@@ -8,7 +8,7 @@ struct Edge
 {
     int to;
     double weight;
-};
+}; // 1 for unweighted
 
 struct AdjacencyList
 {
