@@ -2,3 +2,106 @@
 
 - **GEMM**: simple (direct) implementation and cache-blocked (tiled) implementation
 - **CSR Graph**: adjacency-list -> Compressed Sparse Row conversion helper
+
+## System Specs
+```
+Processor:Ryzen 5 4600 @ 4GHz
+RAM:24GB
+L1 Cache:384KB
+L2 Cache:3MB
+L3 Cache:8MB
+```
+## Project layout
+
+```
+include/gemm.h        Matrix struct, GEMM function declarations
+include/csr.h          AdjacencyList / CSR structs, function declarations
+src/gemm.cpp           gemm_simple, gemm_blocking, matrix I/O
+src/gemm_driver.cpp    GEMM driver (reads file, times, prints per spec format)
+src/csr.cpp            read_adjacency_list, build_csr, print_csr
+src/csr_driver.cpp     CSR driver (reads graph file, times conversion, prints)
+tools/gen_gemm_tests.py    generates gemm_test_01.txt ... at increasing sizes
+tools/gen_graph_tests.py   generates graph files at V = 10/100/10000/50000/100000
+tests/                 sample + generated input files
+build.sh               compiles both drivers
+```
+
+## Build
+
+```bash
+./build.sh
+```
+
+## Run
+
+```bash
+# GEMM: <input file> [block_size, default 32]
+./gemm_driver tests/gemm/gemm_test_01.txt 32
+
+# CSR conversion: <graph file> 
+./csr_driver tests/csr/graph_unweighted_100000.txt 
+```
+## Generate test files
+
+```bash
+g++ -O2 -std=c++17 -static-libgcc -static-libstdc++ -Iinclude tools/gen_gemm_tests.cpp -o tools/gen_gemm_tests
+g++ -O2 -std=c++17 -static-libgcc -static-libstdc++ -Iinclude tools/gen_graph_tests.cpp -o tools/gen_graph_tests
+
+./tools/gen_gemm_tests tests/gemm
+./tools/gen_graph_tests tests/graphs
+```
+## Timing methodology
+
+- The timer (`std::chrono::high_resolution_clock`) starts immediately before
+  calling `gemm_simple` / `gemm_blocking` / `build_csr`, and stops immediately
+  after. File reading, parsing, and result printing are excluded, per the
+  assignment's timing rule.
+- CSR conversion time is reported **separately** from any graph algorithm's
+  time, since it is preprocessing.
+- Each driver run also includes a correctness check: the GEMM driver
+  verifies `gemm_simple` and `gemm_blocking` produce identical result
+  matrices (warns on the console if they don't); 
+## 9.1 GEMM Results Table
+
+Block size = 32 unless noted
+| Test File | Input Type / Size | Expected Output | Actual Output | Simple Time | Blocking Time | Block Size | Status |
+|---|---|---|---|---|---|---|---|
+| gemm_test_01.txt | 2x3 and 3x2 | matches simple | matches simple | 0.00083 ms | 0.00039 ms | 32 | Pass |
+| gemm_test_02.txt | 10x10 and 10x10 | matches simple | matches simple | 0.002 ms | 0.00122 ms | 32 | Pass |
+| gemm_test_03.txt | 64x64 and 64x64 | matches simple | matches simple | 0.13 ms | 0.115 ms | 32 | Pass |
+| gemm_test_04.txt | 128x128 and 128x128 | matches simple | matches simple | 0.82 ms | 1.01 ms | 32 | Pass |
+| gemm_test_05.txt | 256x256 and 256x256 | matches simple | matches simple | 6.497 ms | 10.38 ms | 32 | Pass |
+| gemm_test_06.txt | 512x512 and 512x512 | matches simple | matches simple | 49.06 ms | 64.13 ms | 32 | Pass |
+| gemm_test_06.txt | 512x512 and 512x512 | matches simple | matches simple | 49.89 ms | 50.237 ms | 64 | Pass |
+| gemm_test_06.txt | 512x512 and 512x512 | matches simple | matches simple | 51.37 ms | 62.775 ms | 128 | Pass |
+| gemm_test_07.txt | 1024x1024 and 1024x1024 | matches simple | matches simple | 533.438 ms | 478.63 ms | 256 | Pass |
+| gemm_test_08.txt | 2048x2048 and 2048x2048 | matches simple | matches simple | 4459.15 ms | 4415.74 ms | 2048 | Pass |
+| gemm_test_09.txt | 4096x4096 and 4096x4096 | matches simple | matches simple |  42255.7 ms | 46946.7 ms | 2048 | Pass |
+| gemm_test_09.txt | 4096x4096 and 4096x4096 | matches simple | matches simple | 37460.2 ms | 37562.8 ms | 4096 | Pass |
+| gemm_test_10.txt | 8192x8192 and 8192x8192 | matches simple | matches simple | 335906  ms | 347255 ms ms | 4096 | Pass |
+
+
+## 9.2 CSR conversion
+
+| Test File | Vertices | Edges | Input Type | Source | Expected Output | Actual Output | Time | Status |
+|---|---|---|---|---|---|---|---|---|
+| graph_unweighted_10.txt | 10 | 29 | Unweighted adjacency list | 0 | CSR built, 58 stored entries | matches | 0.00122 ms | Pass |
+| graph_unweighted_100.txt | 100 | 299 | Unweighted adjacency list | 0 | CSR built, 598 stored entries | matches | 0.011 ms | Pass |
+| graph_unweighted_10000.txt | 10,000 | 29,999 | Unweighted adjacency list | 0 | CSR built, 59,998 stored entries | matches | 0.462 ms | Pass |
+| graph_unweighted_50000.txt | 50,000 | 149,999 | Unweighted adjacency list | 0 | CSR built, 299,998 stored entries | matches | 1.945 ms | Pass |
+| graph_unweighted_100000.txt | 100,000 | 299,999 | Unweighted adjacency list | 0 | CSR built, 599,998 stored entries | matches | 3.671 ms | Pass |
+| graph_weighted_10.txt | 10 | 29 | Positive-weighted adjacency list | 0 | CSR built, 58 stored entries | matches | 0.002 ms | Pass |
+| graph_weighted_100.txt | 100 | 299 | Positive-weighted adjacency list | 0 | CSR built, 598 stored entries | matches | 0.005 ms | Pass |
+| graph_weighted_10000.txt | 10,000 | 29,999 | Positive-weighted adjacency list | 0 | CSR built, 59,998 stored entries | matches | 0.363 ms | Pass |
+| graph_weighted_50000.txt | 50,000 | 149,999 | Positive-weighted adjacency list | 0 | CSR built, 299,998 stored entries | matches | 1.785 ms | Pass |
+| graph_weighted_100000.txt | 100,000 | 299,999 | Positive-weighted adjacency list | 0 | CSR built, 599,998 stored entries | matches | 3.636 ms | Pass |
+
+CSR entries stored = 2E for the undirected graphs above (each undirected
+edge appears once in each endpoint's adjacency list, per section 6.1/7.1 of
+the spec), which is why "CSR entries stored" is roughly double the edge
+count E reported at the top of the file.
+
+Generated graphs: random spanning path over vertices 0..V-1 (guarantees
+every vertex is reachable from source 0) plus extra random edges for an
+average degree of ~4, undirected, no self-loops or duplicate edges. Weighted
+versions assign each edge a random integer weight in [1, 20].
