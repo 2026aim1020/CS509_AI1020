@@ -13,8 +13,8 @@
 
 
 #include "../../assignment_1/include/csr.h"
-#include "bellman_ford.h"
-#include "floyd_warshall.h"
+#include "../include/bellman_ford.h"
+#include "../include/floyd_warshall.h"
 #include <cmath>
 #include <iostream>
 #include <string>

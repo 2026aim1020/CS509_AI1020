@@ -1,4 +1,4 @@
-#include "floyd_warshall.h"
+#include "../include/floyd_warshall.h"
 #include "../../assignment_1/include/csr.h" 
 #include <fstream>
 #include <sstream>
@@ -50,7 +50,7 @@ FloydWarshallResult floyd_warshall(const DenseMatrix &M)
 {
     FloydWarshallResult res;
     res.distance = M; 
-    
+
     const int V = M.V;
     DenseMatrix &D = res.distance;
 
