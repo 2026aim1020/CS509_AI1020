@@ -1,4 +1,4 @@
-#include "bellman_ford.h"
+#include "../include/bellman_ford.h"
 #include <limits>
 
 BellmanFordResult bellman_ford_csr(const CSR &csr, int source)
