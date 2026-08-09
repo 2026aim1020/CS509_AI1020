@@ -1,0 +1,117 @@
+# CS509 - Assignment 2 - INDIVIDUAL (Bellman-Ford + Floyd-Warshall)
+
+
+| Task Type | Algorithms | Work Mode |
+|---|---|---|
+| Individual task | Bellman-Ford (SSSP, negative weights allowed) and Floyd-Warshall (all-pairs), CSR graph as input | Individual |
+
+## Assignment 2
+
+
+- **Bellman-Ford** uses `read_adjacency_list()` and `build_csr()` from
+  Assignment 1 unmodified. The input format (`V E`, then
+  `u degree neighbor weight ...` lines, then `SOURCE s`) is exactly the
+  weighted format Assignment 1 already parses - negative weights just flow
+  through since edge weights are read as `double`, sign included.
+- **Floyd-Warshall** is exempt from CSR per the spec (Section 4.1) and
+  reads its own dense-matrix format directly - it does not touch
+  Assignment 1 at all.
+- The **cross-check tool** (`cross_check_driver.cpp`) builds a CSR via
+  Assignment 1's `build_csr()`, then derives a dense matrix from that same
+  CSR (`csr_to_dense_matrix()`) so Bellman-Ford and Floyd-Warshall are
+  compared on the *exact* same graph rather than two separately-generated
+  files that might drift out of sync.
+
+## Project layout
+
+```
+include/bellman_ford.h      BellmanFordResult, bellman_ford_csr()
+include/floyd_warshall.h    DenseMatrix, floyd_warshall(), read_fw_input(),
+                             csr_to_dense_matrix()
+src/bellman_ford.cpp        Bellman-Ford implementation (operates on Assignment 1's CSR)
+src/floyd_warshall.cpp      Floyd-Warshall implementation + matrix I/O
+src/bf_driver.cpp           Bellman-Ford driver (reads file, times, prints per spec)
+src/fw_driver.cpp           Floyd-Warshall driver (reads file, times, prints per spec)
+src/cross_check_driver.cpp  Runs BF from every source vs FW on the same graph
+src/wrapper.cpp             Menu-driven runner (single test / all tests / run
+                             BF+FW concurrently)
+tools/gen_bf_tests.cpp      Generates bf_<V>.txt at required sizes (DAG-structured,
+                             so negative weights can never form a cycle)
+tools/gen_fw_tests.cpp      Generates fw_500/1000/2000.txt (same DAG trick)
+tools/bf_to_fw_convert.cpp  Derives fw_10.txt / fw_100.txt from the matching
+                             bf_10.txt / bf_100.txt for the required cross-check
+tests/                      Spec examples + generated test files
+
+                             
+```
+
+## Build
+
+```bash
+./build.sh # run from root 
+# or, if Assignment 1 lives somewhere else: 
+A1=/path/to/assignment1 ./build.sh
+```
+
+## Run
+
+```bash
+./bf_driver assignment_2/tests/bf_example.txt
+./fw_driver assignment_2/tests/fw_example.txt
+./cross_check assignment_2/tests/bf_gen/bf_10.txt
+./wrapper          # menu-driven: single test / all tests / run both concurrently
+```
+
+## Negative-weight test-graph safety
+
+Randomly assigning negative weights to a large graph risks accidentally
+creating a negative-weight cycle, which would make most test cases report
+"Negative cycle: true" instead of exercising the real algorithm. Both
+generators sidestep this: every edge only goes from a lower vertex index to
+a higher one (`u -> v` with `u < v`), so the generated graphs are DAGs by
+construction and **cannot** contain a cycle of any kind, regardless of how
+many edges are given negative weights. This lets negative and positive
+weights mix freely at every size without a cycle-detection pass. Explicit
+negative-cycle test cases (`bf_negative_cycle.txt`, `fw_negative_cycle.txt`)
+are hand-crafted separately to verify the detection path itself works.
+
+## 11.1 Bellman-Ford / Floyd-Warshall Results Table
+
+| Algorithm | Test File | Vertices | Edges | Source | Negative Cycle | Expected Output | Actual Output | Time | Status |
+|---|---|---|---|---|---|---|---|---|---|
+| Bellman-Ford | bf_example.txt (spec example) | 5 | 10 | 0 | No | 0,2,4,7,-2 | 0,2,4,7,-2 | 0.00071 ms | Pass |
+| Floyd-Warshall | fw_example.txt (spec example) | 5 | 10 direct edges | N/A | No | matrix in Section 6.3 | matches exactly | 0.00121 ms | Pass |
+| Bellman-Ford | bf_negative_cycle.txt | 3 | 3 | 0 | **Yes** | Negative cycle: true | Negative cycle: true | 0.00040 ms | Pass |
+| Floyd-Warshall | fw_negative_cycle.txt | 3 | 3 direct edges | N/A | **Yes** | Negative cycle: true | Negative cycle: true | 0.00096 ms | Pass |
+| Bellman-Ford | bf_10.txt | 10 | 9 | 0 | No | distances | matches | 0.00048 ms | Pass |
+| Floyd-Warshall | fw_10.txt (derived from bf_10.txt) | 10 | 9 direct edges | N/A | No | matrix | matches | 0.00443 ms | Pass |
+| Bellman-Ford | bf_100.txt | 100 | 252 | 0 | No | distances | matches | 0.00563 ms | Pass |
+| Floyd-Warshall | fw_100.txt (derived from bf_100.txt) | 100 | 252 direct edges | N/A | No | matrix | matches | 0.42641 ms | Pass |
+| Floyd-Warshall | fw_500.txt | 500 | - (dense, generated directly) | N/A | No | matrix | ok | 51.17 ms | Pass |
+| Floyd-Warshall | fw_1000.txt | 1,000 | - (dense, generated directly) | N/A | No | matrix | ok | 350.16 ms / 494.64 ms* | Pass |
+| Floyd-Warshall | fw_2000.txt | 2,000 | - (dense, generated directly) | N/A | No | matrix | ok | 2746.18 ms / 2759.1 ms* | Pass |
+| Bellman-Ford | bf_10000.txt | 10,000 | 29,870 | 0 | No | distances | ok | 0.52 ms | Pass |
+| Bellman-Ford | bf_50000.txt | 50,000 | 150,227 | 0 | No | distances | ok | 2.60 ms | Pass |
+| Bellman-Ford | bf_100000.txt | 100,000 | 299,634 | 0 | No | distances | ok | 5.19 ms | Pass |
+
+## Cross-check (Section 6.3 requirement)
+
+For V=10 and V=100, Bellman-Ford was run from every vertex as source and
+compared against the corresponding row of Floyd-Warshall's output on the
+exact same graph (`./cross_check tests/bf_gen/bf_10.txt` /
+`bf_100.txt`):
+
+| Graph | Sources checked | Result |
+|---|---|---|
+| bf_10.txt (V=10) | 10/10 | **ALL SOURCES MATCH** |
+| bf_100.txt (V=100) | 100/100 | **ALL SOURCES MATCH** |
+
+## Notes 
+
+- All times are single-run wall-clock measurements from
+  `std::chrono::high_resolution_clock`; the smallest cases are
+  noise-dominated (sub-microsecond), reported as-is per the spec's guidance
+  on very fast inputs.
+- Test-data generation seeds are fixed (`std::mt19937 rng(123)` for
+  Bellman-Ford, `rng(456)` for Floyd-Warshall), so re-running the generator
+  tools reproduces the exact files these results were measured on.
