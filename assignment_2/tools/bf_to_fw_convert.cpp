@@ -5,7 +5,7 @@
 //   ./bf_to_fw_convert <bf_format_file> <output_fw_file>
 
 #include "../../assignment_1/include/csr.h"
-#include "floyd_warshall.h"
+#include "../include/floyd_warshall.h"
 #include <cmath>
 #include <iostream>
 #include <string>
