@@ -2,10 +2,12 @@
 // g++ -O2 -std=c++17 -static-libgcc -static-libstdc++ -pthread \
 //   -Iassignment_1/include \
 //   -Iassignment_2/include \
+//   -Iassignment_3/include \
 //   assignment_1/src/csr.cpp \
 //   assignment_1/src/gemm.cpp \
 //   assignment_2/src/bellman_ford.cpp \
 //   assignment_2/src/floyd_warshall.cpp \
+//   assignment_3/src/mst.cpp \
 //   common_wrapper/wrapper.cpp \
 //   -o wrapper.exe
 
@@ -27,7 +29,7 @@
 #include "../assignment_1/include/gemm.h"             // Assignment 1
 #include "../assignment_2/include/bellman_ford.h"     // Assignment 2 
 #include "../assignment_2/include/floyd_warshall.h"   // Assignment 2 
-
+#include "../assignment_3/include/mst.h"               // Assignment 3
 
 #include <algorithm>
 #include <chrono>
@@ -540,7 +542,105 @@ namespace a2i
         threads.emplace_back(run_fw_suite, fw_files);
     }
 
-} 
+}
+
+// ===========================================================================
+// Assignment 3 (MST with Kruskal and Prim's)
+// ===========================================================================
+namespace a3{
+    void run_mst_file(const std::string &path)
+    {
+        AdjacencyList g;
+        if (!read_adjacency_list(path, g))
+        {
+            std::cout << path << " -> ERROR: could not read/parse file\n";
+            return;
+        }
+
+        // Preprocessing: adjacency-list -> CSR. NOT part of the timed algorithm.
+        CSR csr = build_csr(g);
+
+        auto t1 = std::chrono::high_resolution_clock::now();
+        MSTResult kr = kruskal_mst(csr);
+        auto t2 = std::chrono::high_resolution_clock::now();
+        double kr_ms = std::chrono::duration<double, std::milli>(t2 - t1).count();
+
+        auto t3 = std::chrono::high_resolution_clock::now();
+        MSTResult pr = prim_mst(csr, 0);
+        auto t4 = std::chrono::high_resolution_clock::now();
+        double pr_ms = std::chrono::duration<double, std::milli>(t4 - t3).count();
+
+        std::cout << "\nFile: " << path << " | V=" << g.V << " E=" << g.E << "\n";
+
+        std::cout << "Algorithm: Kruskal's MST\nMST edges:\n";
+
+        if (g.V <= 1000)
+        {
+            for (const auto &e : kr.edges)
+                std::cout << e.u << " " << e.v << " " << e.weight << "\n";
+        }
+        std::cout << "Total MST weight: " << kr.total_weight << "\n";
+        std::cout << "Execution time: " << kr_ms << " ms\n\n";
+
+        std::cout << "Algorithm: Prim's MST\nMST edges:\n";
+        if (g.V <= 1000)
+        {
+            for (const auto &e : pr.edges)
+                std::cout << e.u << " " << e.v << " " << e.weight << "\n";
+        }
+        std::cout << "Total MST weight: " << pr.total_weight << "\n";
+        std::cout << "Execution time: " << pr_ms << " ms\n";
+
+        bool equal = std::fabs(kr.total_weight - pr.total_weight) < 1e-6;
+        std::cout << "\nWeights equal: " << (equal ? "Yes" : "No") << "\n";
+    }
+
+    void run_mst_suite(const std::vector<std::string> &files)
+    {
+        for (const auto &f : files)
+            run_mst_file(f);
+    }
+
+    void open_menu()
+    {
+        while (true)
+        {
+            std::cout << "\n== Assignment 3 (Individual): MST - Kruskal + Prim ==\n"
+                      << "1. Run a single test file\n"
+                      << "2. Run all *.txt files in a folder\n"
+                      << "3. Back\n";
+            int c = common::prompt_int("Choose: ", 3);
+            if (c == 1)
+            {
+                run_mst_file(common::prompt_line("Input file path: "));
+            }
+            else if (c == 2)
+            {
+                std::string dir = common::prompt_line("Folder path [default tests]: ");
+                if (dir.empty())
+                    dir = "assignment_3/tests";
+                auto files = common::list_txt_files(dir);
+                if (files.empty())
+                {
+                    std::cout << "No .txt files found in " << dir << "\n";
+                    continue;
+                }
+                std::cout << "Running " << files.size() << " MST test file(s)...\n";
+                run_mst_suite(files);
+            }
+            else
+            {
+                return;
+            }
+        }
+    }
+
+    void launch_concurrent(std::vector<std::thread> &threads)
+    {
+        auto files = common::list_txt_files("assignment_3/tests");
+        threads.emplace_back(run_mst_suite, files);
+    }
+}
 
 
 // ===========================================================================
@@ -563,6 +663,7 @@ int main()
     std::vector<AssignmentModule> modules = {
         {"Assignment 1 (GEMM + CSR )", a1::open_submenu, a1::launch_concurrent},
         {"Assignment 2 (Bellman-Ford + Floyd-Warshall)", a2i::open_submenu, a2i::launch_concurrent},
+        {"Assignment 3 (MST - Kruskal + Prim)", a3::open_menu, a3::launch_concurrent},
     };
 
     while (true)
@@ -596,7 +697,7 @@ int main()
             std::cout << "\nEVERYTHING finished (" << threads.size() << " suites across "
                       << modules.size() << " assignments). Total wall-clock: "
                       << std::chrono::duration<double, std::milli>(t_end - t0).count() << " ms\n"
-                      << "(informational only - report each per-file time printed above, not this total)\n";
+                      << std::endl;
         }
         else if (choice == exit_choice)
         {
