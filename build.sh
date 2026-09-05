@@ -24,7 +24,9 @@ g++ -O2 -std=c++17 -static-libgcc -static-libstdc++ -Iinclude assignment_2/tools
 g++ -O2 -std=c++17 -static-libgcc -static-libstdc++ -Iinclude assignment_2/tools/gen_fw_tests.cpp -o assignment_2/tools/gen_fw_tests
 g++ -O2 -std=c++17 -static-libgcc -static-libstdc++ -Iinclude -I"$A1/include" \
     "$A1/src/csr.cpp" assignment_2/src/floyd_warshall.cpp assignment_2/tools/bf_to_fw_convert.cpp -o assignment_2/tools/bf_to_fw_convert
-g++ -O2 -std=c++17 -static-libgcc -static-libstdc++ -Iinclude assignment_3/tools/gen_mst_graphs.cpp -o assignment_3/tools/gen_mst_graphs
-g++ -O2 -std=c++17 -static-libgcc -static-libstdc++ -pthread -Iassignment_1/include -Iassignment_2/include -Iassignment_3/include assignment_1/src/csr.cpp assignment_1/src/gemm.cpp assignment_2/src/bellman_ford.cpp assignment_2/src/floyd_warshall.cpp assignment_3/src/mst.cpp common_wrapper/wrapper.cpp -o wrapper.exe
+
+g++ -O2 -std=c++17 -static-libgcc -static-libstdc++ assignment_3/tools/gen_mst_tests.cpp -o assignment_3/tools/gen_mst_tests
+
+g++ -O2 -std=c++17 -static-libgcc -static-libstdc++ -pthread -Iassignment_1/include -Iassignment_2/include -Iassignment_3/include -Iassignment_4/include assignment_1/src/csr.cpp assignment_1/src/gemm.cpp assignment_2/src/bellman_ford.cpp assignment_2/src/floyd_warshall.cpp assignment_3/src/mst.cpp assignment_4/src/vertex_coloring.cpp assignment_4/src/pagerank.cpp common_wrapper/wrapper.cpp -o wrapper.exe
 
 echo "Build complete."
