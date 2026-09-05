@@ -1,1 +1,105 @@
+# CS509 Assignment 4 — Individual Task
+Vertex Coloring (Graph Coloring) + PageRank
+
+## Layout
+
+```
+Assignment_4/
+├── include/            csr.h, vertex_coloring.h, pagerank.h
+├── src/                 vertex_coloring.cpp, pagerank.cpp
+├── tools/               generate_color_graph.cpp, generate_pagerank_graph.cpp
+├── tests/               color, pagerank
+└── README.md
+```
+
+
+## Build
+
+```bash
+g++ -O2 -std=c++17 -Iinclude  src/vertex_coloring.cpp \
+    src/pagerank.cpp tools/wrapper.cpp -o wrapper.exe
+```
+
+Generators (optional, only needed to regenerate/resize test data):
+
+```bash
+g++ -O2 -std=c++17 tools/generate_color_graph.cpp    -o gen_color.exe
+g++ -O2 -std=c++17 tools/generate_pagerank_graph.cpp -o gen_pagerank.exe
+# ./gen_color.exe    <V> <E> <output_path> [seed]
+# ./gen_pagerank.exe <V> <E> <output_path> [seed] [damping] [tolerance] [max_iter]
+```
+
+## Run
+
+```bash
+./wrapper.exe
+```
+
+
+## Timing rule
+
+For both algorithms, the timer starts immediately before the algorithm
+call and stops immediately after. File reading, input validation, and
+adjacency-list → CSR conversion (`build_csr`) all happen before the timer
+starts and are excluded from the reported time.
+
+## Input validation
+
+- **Vertex Coloring**: rejects a self-loop, an out-of-range neighbour id,
+  or an asymmetric edge (an edge listed at `u` but missing from `v`'s row).
+- **PageRank**: rejects a non-positive or `>= 1` damping factor, a
+  non-positive tolerance, or a non-positive `MAX_ITERATIONS`; also
+  rejects malformed rows (declared outdegree not matching the neighbour
+  count) or out-of-range vertex/neighbour ids.
+
+## Algorithm notes
+
+- **Vertex Coloring**: greedy Welsh-Powell — vertices ordered by
+  non-increasing degree, each assigned the smallest color unused by any
+  already-colored neighbour. Uses a stamped `forbidden_at[color] = v`
+  array instead of clearing a fresh array per vertex, so the coloring
+  pass runs in O(V + E) rather than O(V²).
+- **PageRank**: standard power-iteration update with damping; dangling
+  vertices (outdegree 0) distribute their rank evenly across all N
+  vertices each iteration. Stops when total absolute rank change ≤
+  `TOLERANCE` or `MAX_ITERATIONS` is reached.
+
+## Results — Vertex Coloring
+
+| File | V | E | Colors Used | Valid? | Time | Status |
+|---|---|---|---|---|---|---|
+| color_10.txt | 10 | 20 | 4 | Yes | 0.0015 ms | Pass |
+| color_100.txt | 100 | 250 | 5 | Yes | 0.0077 ms | Pass |
+| color_10000.txt | 10,000 | 25,000 | 6 | Yes | 0.71 ms | Pass |
+| color_50000.txt | 50,000 | 125,000 | 6 | Yes | 4.14 ms | Pass |
+| color_100000.txt | 100,000 | 250,000 | 6 | Yes | 8.55 ms | Pass |
+
+(`color_example_spec.txt` holds the 5-vertex worked example from the
+assignment sheet, kept for verification, not counted as a required-size
+test.)
+
+## Results — PageRank
+
+Damping 0.85, tolerance 1e-4, max iterations 100 for all files below.
+
+| File | V | E | Top Vertex | Sum of Ranks | Iter. / Time | Status |
+|---|---|---|---|---|---|---|
+| pagerank_10.txt | 10 | 20 | 0 | 1.000000 | 12 / 0.0014 ms | Pass |
+| pagerank_100.txt | 100 | 250 | 99 | 1.000000 | 33 / 0.0128 ms | Pass |
+| pagerank_1000.txt | 1,000 | 3,000 | 653 | 1.000000 | 15 / 0.0882 ms | Pass |
+| pagerank_10000.txt | 10,000 | 30,000 | 193 | 1.000000 | 15 / 1.83 ms | Pass |
+| pagerank_50000.txt | 50,000 | 150,000 | 48,861 | 1.000000 | 15 / 9.86 ms | Pass |
+
+100,000-vertex PageRank is optional per the spec and was not generated;
+`gen_pagerank.exe 100000 300000 tests/pagerank_100000.txt` produces it on
+demand. (`pagerank_example_spec.txt` holds the 4-vertex worked example
+from the assignment sheet.)
+
+## Test-graph generation
+
+- Vertex Coloring graphs: random, undirected, unweighted, no self-loops
+  or parallel edges, kept sparse (E ≈ 2–2.5V in the tests above).
+- PageRank graphs: random, directed, unweighted; dangling vertices
+  (outdegree 0) occur naturally from the random draw and are handled by
+  the algorithm's even-distribution rule.
 
