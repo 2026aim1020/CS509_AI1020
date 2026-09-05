@@ -3,11 +3,14 @@
 //   -Iassignment_1/include \
 //   -Iassignment_2/include \
 //   -Iassignment_3/include \
+//   -Iassignment_4/include \
 //   assignment_1/src/csr.cpp \
 //   assignment_1/src/gemm.cpp \
 //   assignment_2/src/bellman_ford.cpp \
 //   assignment_2/src/floyd_warshall.cpp \
 //   assignment_3/src/mst.cpp \
+//   assignment_4/src/pagerank.cpp \
+//   assignment_4/src/vertex_coloring.cpp \
 //   common_wrapper/wrapper.cpp \
 //   -o wrapper.exe
 
@@ -30,6 +33,8 @@
 #include "../assignment_2/include/bellman_ford.h"     // Assignment 2 
 #include "../assignment_2/include/floyd_warshall.h"   // Assignment 2 
 #include "../assignment_3/include/mst.h"               // Assignment 3
+#include "../assignment_4/include/pagerank.h"         // Assignment 4
+#include "../assignment_4/include/vertex_coloring.h"   // Assignment 4
 
 #include <algorithm>
 #include <chrono>
@@ -642,6 +647,215 @@ namespace a3{
     }
 }
 
+// ===========================================================================
+// Assignment 4 (Individual): Vertex Coloring + PageRank
+// ===========================================================================
+namespace a4
+{
+    using common::filter_prefix;
+    using common::list_txt_files;
+    using common::prompt_int;
+    using common::prompt_line;
+
+    void run_color_file(const std::string &path)
+    {
+        AdjacencyList g;
+        if (!read_adjacency_list(path, g))
+        {
+            std::cout << "[COLOR] " << path << " -> ERROR: could not read/parse file\n";
+            return;
+        }
+        std::string err;
+        if (!validate_coloring_input(g, err))
+        {
+            std::cout << "[COLOR] " << path << " -> ERROR: " << err << "\n";
+            return;
+        }
+
+        // Preprocessing: adjacency-list -> CSR. NOT part of the timed algorithm.
+        CSR csr = build_csr(g);
+
+        auto t1 = std::chrono::high_resolution_clock::now();
+        ColoringResult res = greedy_vertex_coloring(csr);
+        auto t2 = std::chrono::high_resolution_clock::now();
+        double ms = std::chrono::duration<double, std::milli>(t2 - t1).count();
+
+        std::cout << "\nAlgorithm: Greedy Vertex Coloring\n";
+        std::cout << "File: " << path << "\n";
+        if (g.V <= 50)
+        {
+            std::cout << "Vertex colors:\n";
+            for (int v = 0; v < g.V; ++v)
+                std::cout << v << " " << res.color[v] << "\n";
+        }
+        std::cout << "Colors used: " << res.colors_used << "\n";
+        std::cout << "Valid: " << (res.valid ? "true" : "false") << "\n";
+        std::cout << "Execution time: " << ms << " ms\n";
+    }
+
+    void run_pagerank_file(const std::string &path)
+    {
+        PageRankInput in;
+        std::string err;
+        if (!read_pagerank_input(path, in, err))
+        {
+            std::cout << "[PR] " << path << " -> ERROR: " << err << "\n";
+            return;
+        }
+
+        // Preprocessing: adjacency-list -> CSR. NOT part of the timed algorithm.
+        CSR csr = build_csr(in.graph);
+
+        auto t1 = std::chrono::high_resolution_clock::now();
+        PageRankResult res = pagerank(csr, in.damping, in.tolerance, in.max_iterations);
+        auto t2 = std::chrono::high_resolution_clock::now();
+        double ms = std::chrono::duration<double, std::milli>(t2 - t1).count();
+
+        double sum = 0.0;
+        int top = 0;
+        for (int v = 0; v < in.graph.V; ++v)
+        {
+            sum += res.rank[v];
+            if (res.rank[v] > res.rank[top])
+                top = v;
+        }
+
+        std::cout << std::fixed << std::setprecision(6);
+        std::cout << "\nAlgorithm: PageRank\n";
+        std::cout << "File: " << path << "\n";
+        std::cout << "Damping: " << in.damping << "\n";
+        if (in.graph.V <= 50)
+        {
+            std::cout << "Vertex ranks:\n";
+            for (int v = 0; v < in.graph.V; ++v)
+                std::cout << v << " " << res.rank[v] << "\n";
+        }
+        std::cout << "Top vertex: " << top << " (" << res.rank[top] << ")\n";
+        std::cout << "Sum of ranks: " << sum << "\n";
+        std::cout << "Iterations: " << res.iterations << "\n";
+        std::cout << "Converged: " << (res.converged ? "true" : "false") << "\n";
+        std::cout << "Execution time: " << ms << " ms\n";
+    }
+
+    void run_color_suite(const std::vector<std::string> &files)
+    {
+        for (const auto &f : files)
+            run_color_file(f);
+    }
+    void run_pagerank_suite(const std::vector<std::string> &files)
+    {
+        for (const auto &f : files)
+            run_pagerank_file(f);
+    }
+
+    void menu_color()
+    {
+        std::cout << "\n-- Vertex Coloring --\n1. Run a single test file\n2. Run all color_*.txt files in a folder\n3. Back\n";
+        int c = prompt_int("Choose: ", 3);
+        if (c == 1)
+            run_color_file(prompt_line("Input file path: "));
+        else if (c == 2)
+        {
+            std::string dir = prompt_line("Folder path [default tests]: ");
+            if (dir.empty())
+                dir = "assignment_4/tests/color";
+            auto files = list_txt_files(dir);
+            if (files.empty())
+            {
+                std::cout << "No color_*.txt files found in " << dir << "\n";
+                return;
+            }
+            std::cout << "Running " << files.size() << " Vertex Coloring test file(s)...\n";
+            run_color_suite(files);
+        }
+    }
+
+    void menu_pagerank()
+    {
+        std::cout << "\n-- PageRank --\n1. Run a single test file\n2. Run all pagerank_*.txt files in a folder\n3. Back\n";
+        int c = prompt_int("Choose: ", 3);
+        if (c == 1)
+            run_pagerank_file(prompt_line("Input file path: "));
+        else if (c == 2)
+        {
+            std::string dir = prompt_line("Folder path [default tests]: ");
+            if (dir.empty())
+                dir = "assignment_4/tests/pagerank";
+            auto files = list_txt_files(dir);
+            if (files.empty())
+            {
+                std::cout << "No pagerank_*.txt files found in " << dir << "\n";
+                return;
+            }
+            std::cout << "Running " << files.size() << " PageRank test file(s)...\n";
+            run_pagerank_suite(files);
+        }
+    }
+
+    void menu_run_all()
+    {
+        std::string color_dir = prompt_line("Color Test folder [default tests]: ");
+        if (color_dir.empty())
+            color_dir = "assignment_4/tests/color";
+        std::string pagerank_dir = prompt_line("PageRank Test folder [default tests]: ");
+        if (pagerank_dir.empty())
+            pagerank_dir = "assignment_4/tests/pagerank";
+        auto color_files = list_txt_files(color_dir);
+        auto pagerank_files = list_txt_files(pagerank_dir);
+
+        if (color_files.empty() && pagerank_files.empty())
+        {
+            std::cout << "No test files found.\n";
+            return;
+        }
+
+        std::cout << "Launching Vertex Coloring and PageRank concurrently...\n\n";
+        auto t0 = std::chrono::high_resolution_clock::now();
+        std::thread t1(run_color_suite, color_files);
+        std::thread t2(run_pagerank_suite, pagerank_files);
+        t1.join();
+        t2.join();
+        auto t_end = std::chrono::high_resolution_clock::now();
+        std::cout << "\nAssignment 4 (Individual) finished. Wall-clock: "
+                  << std::chrono::duration<double, std::milli>(t_end - t0).count() << " ms\n";
+    }
+
+    void open_submenu()
+    {
+        while (true)
+        {
+            std::cout << "\n== Assignment 4 (Individual): Vertex Coloring + PageRank ==\n"
+                      << "1. Run Vertex Coloring\n2. Run PageRank\n"
+                      << "3. Run All (concurrently)\n4. Exit\n";
+            int c = prompt_int("Choose an option: ", 4);
+            switch (c)
+            {
+            case 1:
+                menu_color();
+                break;
+            case 2:
+                menu_pagerank();
+                break;
+            case 3:
+                menu_run_all();
+                break;
+            case 4:
+                return;
+            default:
+                std::cout << "Invalid choice, try again.\n";
+                break;
+            }
+        }
+    }
+
+    void launch_concurrent(std::vector<std::thread> &threads)
+    {
+        auto color_files = list_txt_files("assignment_4/tests/color");
+        auto pagerank_files = list_txt_files("assignment_4/tests/pagerank");
+        threads.emplace_back(run_color_suite, color_files);
+        threads.emplace_back(run_pagerank_suite, pagerank_files);
+    }
+}
 
 // ===========================================================================
 // Registry + main menu
@@ -664,6 +878,7 @@ int main()
         {"Assignment 1 (GEMM + CSR )", a1::open_submenu, a1::launch_concurrent},
         {"Assignment 2 (Bellman-Ford + Floyd-Warshall)", a2i::open_submenu, a2i::launch_concurrent},
         {"Assignment 3 (MST - Kruskal + Prim)", a3::open_menu, a3::launch_concurrent},
+        {"Assignment 4 (Vertex Coloring + PageRank)", a4::open_submenu, a4::launch_concurrent},
     };
 
     while (true)
